@@ -1,0 +1,42 @@
+---
+title: "Analysis of Pilot Data"
+author: "Jonathan, Aysun, Isabel"
+date: '2022-03-12'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table)
+library(sandwich)
+library(lmtest)
+
+library(ggplot2)
+library(knitr)
+```
+
+```{r load data}
+d <- fread("data/w241_survey_pilot_03_12_22.csv")
+```
+
+```{r}
+d[ , .N]
+d[ , .(GROUP, Q8_1)]
+```
+```{r}
+pilot_group_mean <- d[ , .(mean_donate = mean(Q8_1, na.rm = T)), keyby = .(GROUP)]
+pilot_group_mean
+```
+
+
+```{r EDA}
+hist(
+  d$Q8_1, 
+  col = 'steelblue', 
+  xlab = 'Willingness to Donate', 
+  main = 'Histogram of Outcome Variable'
+  )
+
+```
+
