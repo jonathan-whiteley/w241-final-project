@@ -17,21 +17,23 @@ library(knitr)
 
 ```
 
-```{r load data}
+```{r load data, include = FALSE}
 d <- fread("data/w241_survey_pilot_03_12_22.csv")
 ```
-
-```{r}
+# EDA
+```{r EDA, include = TRUE}
 d[ , .N]
 d[ , .(GROUP, Q8_1)]
 ```
-```{r}
-pilot_group_mean <- d[ , .(mean_donate = mean(Q8_1, na.rm = T)), keyby = .(GROUP)]
+We collected 27 data points during pilot.
+
+```{r more EDA, include = TRUE}
+pilot_group_mean <- d[ , .(mean_donate = mean(Q8_1, na.rm = T), observations = .N), keyby = .(GROUP)]
 pilot_group_mean
 ```
+We have 9 people in each treatment groups and 9 people in the control group. Average willingness to donate for control group is lower than the test groups.
 
-
-```{r EDA}
+```{r plotting, include = TRUE}
 hist(
   d$Q8_1, 
   col = 'steelblue', 
@@ -39,5 +41,14 @@ hist(
   main = 'Histogram of Outcome Variable'
   )
 
-```
+d %>%
+  ggplot() +
+  aes(x=Q8_1, fill = GROUP) +
+  geom_bar(position='dodge') +
+  labs(
+    title = 'Distribution of Outcome Variable', 
+    x = 'Willingness to Donate'
+  ) 
 
+```
+Our histogram above shows the distribution of the outcome variable (i.e. willingness to donate which take values 0-10) which is skewed to the left. We also plotted a bar chart to show the distribution of the outcome variable by treatment and control groups which show control group's willingness to donate looks lower. This result is consistent with the averages we calculated above.
