@@ -21,35 +21,220 @@ library(tidyr)
 ```{r load data, include = FALSE}
 d <- fread("data/w241_survey_pilot_03_12_22.csv")
 ```
-# EDA
-```{r EDA, include = TRUE}
-d[ , .N]
-d[ , .(GROUP, Q8_1)]
-```
-We collected 27 data points during pilot.
 
-```{r more EDA, include = TRUE}
-pilot_group_mean <- d[ , .(mean_donate = mean(Q8_1, na.rm = T), observations = .N), keyby = .(GROUP)]
+```{r, include = FALSE}
+head(d)
+```
+# EDA
+
+First, we are going to rename some variables to make them more readable.
+
+```{r variable_names, include=TRUE}
+setnames(
+  x = d,
+  old = c("Duration (in seconds)","Gender Q", "Age Q", "Income Q", "Deceased of Cancer Q", "Previous Donation Q",    "Q8_1", "GROUP"),
+  new = c(             "duration",  "gender",   "age",   "income",      "deceased_cancer",   "previous_donation", "outcome", "group")
+)
+```
+
+## General statistics and null values
+
+We can get an idea of the values in the table with a summary of the statistics for each column.
+
+```{r data_summary, include=TRUE}
+summary(d)
+```
+
+```{r data_summary, include=TRUE}
+summary(d$outcome)
+```
+
+We observe that we have 2 null values in the outcome variable `outcome`.
+
+## Number of surveys
+
+```{r EDA, include = TRUE}
+total_surveys <- d[ , .N]
+total_surveys
+```
+
+We collected `r total_surveys` `r total_surveys` data points during pilot. There are an equal number of surveys in each group.
+
+```{r EDA, include = TRUE}
+d[ , .N, by=group]
+```
+
+# Average treatment effect (ATE)
+
+Let's calculate the value of the outcome variable in each group.
+```{r EDA, include = TRUE}
+pilot_group_mean <- d[ , .(mean_donate = mean(outcome, na.rm = T)), by=group]
 pilot_group_mean
 ```
-We have 9 people in each treatment groups and 9 people in the control group. Average willingness to donate for control group is lower than the test groups.
+The average willingness to donate in the control group is lower than in the treatment groups. The charts below show the distribution of the outcome variable (i.e. willingness to donate which take values 0-10) which is skewed to the left. We also plot the distribution of the outcome variable by treatment and control groups, which show that the control group's willingness to donate is lower. This result is consistent with the averages we calculated above.
 
-```{r plotting, include = TRUE}
+```{r}
 hist(
-  d$Q8_1, 
+  d$outcome, 
   col = 'steelblue', 
   xlab = 'Willingness to Donate', 
-  main = 'Histogram of Outcome Variable'
+  main = 'Distribution of Outcome Variable'
   )
+```
 
+
+```{r}
 d %>%
   ggplot() +
-  aes(x=Q8_1, fill = GROUP) +
+  aes(x=outcome, fill = group) +
   geom_bar(position='dodge') +
   labs(
-    title = 'Distribution of Outcome Variable', 
-    x = 'Willingness to Donate'
+    title = 'Distribution of Outcome Variable for each group', 
+    x = 'Willingness to Donate (0-10)'
   ) 
+```
+
+But, how big is the effect size?
+
+```{r ate, include = TRUE }
+positive_outcome <- d[group=="TREAT_POS", mean(outcome, na.rm = T) ]
+negative_outcome <- d[group=="TREAT_NEG", mean(outcome, na.rm = T) ]
+baseline <- d[group=="CONTROL", mean(outcome, na.rm = T) ]
+
+ate_positive <- positive_outcome - baseline
+ate_positive
+
+ate_negative <- negative_outcome - baseline
+ate_negative
 
 ```
-Our histogram above shows the distribution of the outcome variable (i.e. willingness to donate which take values 0-10) which is skewed to the left. We also plotted a bar chart to show the distribution of the outcome variable by treatment and control groups which show control group's willingness to donate looks lower. This result is consistent with the averages we calculated above.
+
+The average treatment effect for the positive message is `ate_positive` `r ate_positive`, and the average treatment effect of the negative message is `ate_negative` `r ate_negative`.
+
+# Covariate analysis
+
+Let's do a covariate check to ensure that random assignment is working properly. In this study we are measuring five covariates:
+- `gender`: Gender identity using four categories
+- `age`: Age group using six categories
+- `income`: Personal income using five categories 
+- `deceased_cancer`: Family member or close friend who died from cancer: Yes/No
+- `previous_donation`: Previous donations to charitable organizations: Yes/No
+
+## Gender
+```{r gender_covariate, include=TRUE}
+gender_check <- d[, .N ,by=.(group, gender)]
+gender_check <- gender_check[order(group, gender)]
+gender_check
+```
+```{r gender_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=gender, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of gender across groups', 
+      x = 'Gender'
+  ) 
+```
+
+The gender seems to be balanced across groups, with the more extreme case observed in the control group.
+
+## Age
+
+```{r age_covariate, include=TRUE}
+age_check <- d[, .N ,by=.(group, age)]
+age_check <- age_check[order(group, age)]
+age_check
+```
+```{r age_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=age, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of age across groups', 
+      x = 'Age group'
+  ) 
+```
+We observe that subjects are all above 30 years old. Subjects in the negative treatment group are younger than subjects in the positive treatment group.
+
+## Income
+
+```{r income_covariate, include=TRUE}
+income_check <- d[, .N ,by=.(group, income)]
+income_check <- income_check[order(group, income)]
+income_check
+```
+```{r income_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=income, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of income across groups', 
+      x = 'Income group'
+  ) 
+```
+
+The majority of subjects for all groups live in a household with income above $150k dollars. Note: ideally we want to order the chart to show income in ascending order. 
+
+## Relative/Friend who died from cancer
+
+```{r deceased_covariate, include=TRUE}
+deceased_check <- d[, .N ,by=.(group, deceased_cancer)]
+deceased_check
+```
+
+```{r deceased_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=deceased_cancer, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of relative/friend who died from cancer across groups', 
+      x = 'Relative/friend who died from cancer'
+  ) 
+```
+We observe balance across groups in the number of relatives or friends who died from cancer.
+
+## Previous donation
+
+```{r prev_donation_covariate, include=TRUE}
+prev_donation_check <- d[, .N ,by=.(group, previous_donation)]
+prev_donation_check <- prev_donation_check[order(group)]
+prev_donation_check
+```
+
+```{r prev_donation_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=previous_donation, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of previous donations across groups', 
+      x = 'Previous donations to charitable organizations'
+  ) 
+```
+In the control and positive treatment groups all subjects have donated before. 
+
+# Other variables
+
+During the survey other interesting variables are captured, such as the time it took for the participants to answer the survey and if the survey was finished or not. 
+
+## Survey duration
+
+```{r survey_duration, include=TRUE}
+d[, .(mean_survey_duration = mean(duration), 
+      min_survey_duration = min(duration), 
+      max_survey_duration = max(duration)
+      ) ,by=.(group)]
+```
+Since the control group does not have to read the treatment message, the time participants spend filling the survey is less. However, there is a difference in time between positive and negative messages. The minimum time the subjects spend in the survey is too short in the treatment groups to read the messages (receive treatment).
+
+## Finished survey
+
+```{r finished_survey, include=TRUE}
+d[, .(fraction_finished = mean(Finished)),by=.(group)]
+```
+ All subjects finished the survey.
+ 
