@@ -22,7 +22,7 @@ library(tidyr)
 d <- fread("data/w241_survey_pilot_03_12_22.csv")
 ```
 
-```{r, include = FALSE}
+```{r, include = TRUE}
 head(d)
 ```
 # EDA
@@ -237,4 +237,62 @@ Since the control group does not have to read the treatment message, the time pa
 d[, .(fraction_finished = mean(Finished)),by=.(group)]
 ```
  All subjects finished the survey.
+ 
+# Power Analysis
+
+In this section we conduct a power analysis to check how many participants we need in the experiment to have enough power to detect an effect.
+
+```{r power_analysis, include=TRUE} 
+number_of_subjects <- seq(10, 500, by=10) 
+
+# create a function to repeat to process to calculate power
+power_function <- function(sample_size=10, treatment_group="TREAT_NEG"){
+  
+  p_values <- rep(NA, 1000) 
+
+  for(i in 1:1000) {
+    experiment <- d[ (group == "CONTROL" | group== treatment_group) & !is.na(outcome) , 
+                     .SD[sample(.N, sample_size/2 , replace=TRUE)], by=group ] 
+    t_test <- t.test(experiment[group==treatment_group, outcome], experiment[group=="CONTROL",outcome]) 
+    p_values[i] <- t_test$p.value
+  }
+  
+  exp_power = mean(p_values < 0.05)
+  
+  return(exp_power)
+}
+
+```
+
+```{r power_analysis, include=TRUE}
+# power analysis for positive treatment
+
+power_with_size_pos_treatment <- NA 
+
+for(i in 1:length(number_of_subjects)) { 
+  power_with_size_pos_treatment[i] <- power_function(sample_size = number_of_subjects[i], treatment_group="TREAT_POS" )
+}
+
+plot(x = number_of_subjects, y = power_with_size_pos_treatment, type = 'l', 
+     main='Power Analysis for Positive Treatment', xlab='Number of Subjects', ylab='Power')
+
+```
+
+
+```{r power_analysis, include=TRUE}
+
+# power analysis for negative treatment
+
+power_with_size_neg_treatment <- NA 
+
+for(i in 1:length(number_of_subjects)) { 
+  power_with_size_neg_treatment[i] <- power_function(sample_size = number_of_subjects[i], treatment_group="TREAT_NEG" )
+}
+
+plot(x = number_of_subjects, y = power_with_size_neg_treatment, type = 'l', 
+     main='Power Analysis for Negative Treatment', xlab='Number of Subjects', ylab='Power')
+```
+
+In the positive vs. control experiment we observe that with 150 subjects we obtain a power higher than 80%. In the negative vs. control experiment, the analysis shows that we need less than 100 subjects to achieve a power higher than 80%. These results are encouraging, but we need to be careful because we did this analysis using data from a small sample. To be safe, we may decide to go with a sample size that includes 100+ subjects in each group (positive treatment, negative treatment and control).
+ 
  
