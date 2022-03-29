@@ -39,7 +39,7 @@ setnames(
 
 ## General statistics and null values
 
-We can get an idea of the values in the table with a summary of the statistics for each column.
+We can get an idea of the values in the table with a summary of the statistics for each column. As we have seen here, people spent 27 seconds at a minimum to finish the survey in the pilot whereas we tested the survey ourselves. Control group took us about 40 seconds and test groups took us about 70 seconds. We worry that this finding might be suggesting that some subjects may not be actually getting the treatment when they were given the treatment (i.e. non-compliance). Therefore, we decided to implement timer in the production survey.
 
 ```{r data_summary, include=TRUE}
 summary(d)
@@ -125,6 +125,10 @@ Let's do a covariate check to ensure that random assignment is working properly.
 gender_check <- d[, .N ,by=.(group, gender)]
 gender_check <- gender_check[order(group, gender)]
 gender_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(gender)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(gender)) ~ group)]
 ```
 ```{r gender_covariate, include=TRUE}
 d %>%
@@ -137,7 +141,7 @@ d %>%
   ) 
 ```
 
-The gender seems to be balanced across groups, with the more extreme case observed in the control group.
+The gender seems to be balanced across groups, with the more extreme case observed in the control group. We also ran a wilcox.test to compare gender distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, gender distribution is the same.
 
 ## Age
 
@@ -145,6 +149,10 @@ The gender seems to be balanced across groups, with the more extreme case observ
 age_check <- d[, .N ,by=.(group, age)]
 age_check <- age_check[order(group, age)]
 age_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(age)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(age)) ~ group)]
 ```
 ```{r age_covariate, include=TRUE}
 d %>%
@@ -156,7 +164,7 @@ d %>%
       x = 'Age group'
   ) 
 ```
-We observe that subjects are all above 30 years old. Subjects in the negative treatment group are younger than subjects in the positive treatment group.
+We observe that subjects are all above 30 years old. Subjects in the negative treatment group are younger than subjects in the positive treatment group. We also ran a wilcox.test to compare age distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, age distribution is the same.
 
 ## Income
 
@@ -164,6 +172,10 @@ We observe that subjects are all above 30 years old. Subjects in the negative tr
 income_check <- d[, .N ,by=.(group, income)]
 income_check <- income_check[order(group, income)]
 income_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(income)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(income)) ~ group)]
 ```
 ```{r income_covariate, include=TRUE}
 d %>%
@@ -176,7 +188,8 @@ d %>%
   ) 
 ```
 
-The majority of subjects for all groups live in a household with income above $150k dollars. Note: ideally we want to order the chart to show income in ascending order. 
+The majority of subjects for all groups live in a household with income above $150k dollars. Note: ideally we want to order the chart to show income in ascending order.
+We also ran a wilcox.test to compare income distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, income distribution is the same.
 
 ## Relative/Friend who died from cancer
 
