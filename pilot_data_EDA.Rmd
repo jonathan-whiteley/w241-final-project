@@ -39,7 +39,7 @@ setnames(
 
 ## General statistics and null values
 
-We can get an idea of the values in the table with a summary of the statistics for each column. As we have seen here, people spent 27 seconds at a minimum to finish the survey in the pilot whereas we tested the survey ourselves. Control group took us about 40 seconds and test groups took us about 70 seconds. We worry that this finding might be suggesting that some subjects may not be actually getting the treatment when they were given the treatment (i.e. non-compliance). Therefore, we decided to implement timer in the production survey.
+We can get an idea of the values in the table with a summary of the statistics for each column. 
 
 ```{r data_summary, include=TRUE}
 summary(d)
@@ -196,6 +196,10 @@ We also ran a wilcox.test to compare income distribution for among each test gro
 ```{r deceased_covariate, include=TRUE}
 deceased_check <- d[, .N ,by=.(group, deceased_cancer)]
 deceased_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(deceased_cancer)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(deceased_cancer)) ~ group)]
 ```
 
 ```{r deceased_covariate, include=TRUE}
@@ -208,7 +212,8 @@ d %>%
       x = 'Relative/friend who died from cancer'
   ) 
 ```
-We observe balance across groups in the number of relatives or friends who died from cancer.
+We observe balance across groups in the number of relatives or friends who died from cancer. 
+We also ran a wilcox.test to compare relatives who died from cancer distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, relatives who died from cancer distribution is the same.
 
 ## Previous donation
 
@@ -216,6 +221,10 @@ We observe balance across groups in the number of relatives or friends who died 
 prev_donation_check <- d[, .N ,by=.(group, previous_donation)]
 prev_donation_check <- prev_donation_check[order(group)]
 prev_donation_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(previous_donation)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(previous_donation)) ~ group)]
 ```
 
 ```{r prev_donation_covariate, include=TRUE}
@@ -229,6 +238,17 @@ d %>%
   ) 
 ```
 In the control and positive treatment groups all subjects have donated before. 
+We also ran a wilcox.test on previous donation among each test group and control group. First test give high p-value that suggests we cannot reject the null hypothesis that among test and control group, previous donation distribution is the same. For the second test, everyone donated for the pilot data. So, the test was not meaningful.
+
+```{r overall_covariate_balance_check, include=TRUE}
+null_mod <- d[ , lm (as.numeric(as.factor(group)) ~ 1)]
+full_mod <- d[ , lm (as.numeric(as.factor(group)) ~ 1 + gender + age + income + deceased_cancer + previous_donation)]
+anova_mod <- anova(full_mod, null_mod, test = 'F')
+anova_mod
+
+```
+
+Since we ran multiple comparison tests for each covariate separately, we might run into a false positive as a result of possible fishing expedition here (i.e. green jelly beans problem covered in the class). More robust way of understanding whether we have covariance balance check is understanding if covariates explain the treatment assignmentswith an F-test. Since our F-test output is  giving us a very high p-value, we cannot reject the null hypothesis that all these covariates are not explaining the treatment assingment. So, randomization seems not showing an issue here.
 
 # Other variables
 
@@ -242,7 +262,9 @@ d[, .(mean_survey_duration = mean(duration),
       max_survey_duration = max(duration)
       ) ,by=.(group)]
 ```
-Since the control group does not have to read the treatment message, the time participants spend filling the survey is less. However, there is a difference in time between positive and negative messages. The minimum time the subjects spend in the survey is too short in the treatment groups to read the messages (receive treatment).
+
+Since the control group does not have to read the treatment message, the time participants spend filling the survey is less. However, there is a difference in time between positive and negative messages. The minimum time the subjects spend in the survey is too short in the treatment groups to read the messages (receive treatment). We tested the survey ourselves to sanity check these durations. Control group took us about 40 seconds and test groups took us about 70 seconds. We worry that this finding might be suggesting that some subjects may not be actually getting the treatment when they were given the treatment (i.e. non-compliance). Therefore, we decided to implement timer in the production survey.
+
 
 ## Finished survey
 
