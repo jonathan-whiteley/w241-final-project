@@ -111,6 +111,18 @@ ate_negative
 
 The average treatment effect for the positive message is `ate_positive` `r ate_positive`, and the average treatment effect of the negative message is `ate_negative` `r ate_negative`.
 
+```{r ate_regression, include = TRUE }
+basic_mod <- d[ , lm(outcome ~ group)]
+se.basic_mod <- coeftest(basic_mod, vcov = vcovHC)[ , "Std. Error"]
+full_mod <- d[ , lm(outcome ~ group + gender + age + income + deceased_cancer + previous_donation)]
+se.full_mod <- coeftest(full_mod, vcov = vcovHC)[ , "Std. Error"]
+
+stargazer(basic_mod, full_mod, type = "text", se = list(se.basic_mod, se.full_mod), star.cutoffs = c(0.05, 0.01, 0.001), title = "Table 1: The effect of Framing on Intent to Donate")
+
+```
+
+For the pilot data, we also ran regression to understand ATEs and whether they're statistically significant. Not to out surprise, they are not. We also added covariates in the full model to reduce the standar errors, but treatments are still not statistically significant.
+
 # Covariate analysis
 
 Let's do a covariate check to ensure that random assignment is working properly. In this study we are measuring five covariates:
