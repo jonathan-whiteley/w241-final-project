@@ -1,0 +1,347 @@
+---
+title: "Analysis of Pilot Data"
+author: "Jonathan, Aysun, Isabel"
+date: '2022-03-12'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table)
+library(sandwich)
+library(lmtest)
+library(stargazer)
+
+library(ggplot2)
+library(knitr)
+library(tidyr)
+
+```
+
+```{r load data, include = FALSE}
+d <- fread("data/w241_survey_final_4_2_22.csv")
+```
+
+```{r, include = TRUE}
+head(d)
+```
+# EDA
+
+First, we are going to rename some variables to make them more readable.
+
+```{r variable_names, include=TRUE}
+setnames(
+  x = d,
+  old = c("Duration (in seconds)","Gender Q", "Age Q", "Income Q", "Deceased of Cancer Q", "Previous Donation Q",    "Q8_1", "GROUP"),
+  new = c(             "duration",  "gender",   "age",   "income",      "deceased_cancer",   "previous_donation", "outcome", "group")
+)
+```
+
+## General statistics and null values
+
+We can get an idea of the values in the table with a summary of the statistics for each column. 
+
+```{r data_summary, include=TRUE}
+summary(d)
+```
+
+```{r data_summary, include=TRUE}
+summary(d$outcome)
+```
+
+We observe that we have 2 null values in the outcome variable `outcome`.
+
+## Number of surveys
+
+```{r EDA, include = TRUE}
+total_surveys <- d[ , .N]
+total_surveys
+```
+
+We collected `r total_surveys` `r total_surveys` data points during pilot. There are an equal number of surveys in each group.
+
+```{r EDA, include = TRUE}
+d[ , .N, by=group]
+```
+
+# Average treatment effect (ATE)
+
+Let's calculate the value of the outcome variable in each group.
+```{r EDA, include = TRUE}
+pilot_group_mean <- d[ , .(mean_donate = mean(outcome, na.rm = T)), by=group]
+pilot_group_mean
+```
+The average willingness to donate in the control group is lower than in the treatment groups. The charts below show the distribution of the outcome variable (i.e. willingness to donate which take values 0-10) which is skewed to the left. We also plot the distribution of the outcome variable by treatment and control groups, which show that the control group's willingness to donate is lower. This result is consistent with the averages we calculated above.
+
+```{r}
+hist(
+  d$outcome, 
+  col = 'steelblue', 
+  xlab = 'Willingness to Donate', 
+  main = 'Distribution of Outcome Variable'
+  )
+```
+
+
+```{r}
+d %>%
+  ggplot() +
+  aes(x=outcome, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+    title = 'Distribution of Outcome Variable for each group', 
+    x = 'Willingness to Donate (0-10)'
+  ) 
+```
+
+But, how big is the effect size?
+
+```{r ate, include = TRUE }
+positive_outcome <- d[group=="TREAT_POS", mean(outcome, na.rm = T) ]
+negative_outcome <- d[group=="TREAT_NEG", mean(outcome, na.rm = T) ]
+baseline <- d[group=="CONTROL", mean(outcome, na.rm = T) ]
+
+ate_positive <- positive_outcome - baseline
+ate_positive
+
+ate_negative <- negative_outcome - baseline
+ate_negative
+
+```
+
+The average treatment effect for the positive message is `ate_positive` `r ate_positive`, and the average treatment effect of the negative message is `ate_negative` `r ate_negative`.
+
+```{r ate_regression, include = TRUE }
+basic_mod <- d[ , lm(outcome ~ group)]
+se.basic_mod <- coeftest(basic_mod, vcov = vcovHC)[ , "Std. Error"]
+full_mod <- d[ , lm(outcome ~ group + gender + age + income + deceased_cancer + previous_donation)]
+se.full_mod <- coeftest(full_mod, vcov = vcovHC)[ , "Std. Error"]
+
+stargazer(basic_mod, full_mod, type = "text", se = list(se.basic_mod, se.full_mod), star.cutoffs = c(0.05, 0.01, 0.001), title = "Table 1: The effect of Framing on Intent to Donate")
+
+```
+
+For the pilot data, we also ran regression to understand ATEs and whether they're statistically significant. Not to out surprise, they are not. We also added covariates in the full model to reduce the standar errors, but treatments are still not statistically significant.
+
+# Covariate analysis
+
+Let's do a covariate check to ensure that random assignment is working properly. In this study we are measuring five covariates:
+- `gender`: Gender identity using four categories
+- `age`: Age group using six categories
+- `income`: Personal income using five categories 
+- `deceased_cancer`: Family member or close friend who died from cancer: Yes/No
+- `previous_donation`: Previous donations to charitable organizations: Yes/No
+
+## Gender
+```{r gender_covariate, include=TRUE}
+gender_check <- d[, .N ,by=.(group, gender)]
+gender_check <- gender_check[order(group, gender)]
+gender_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(gender)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(gender)) ~ group)]
+```
+
+```{r gender_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=gender, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of gender across groups', 
+      x = 'Gender'
+  ) 
+```
+
+The gender seems to be balanced across groups, with the more extreme case observed in the control group. We also ran a wilcox.test to compare gender distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, gender distribution is the same.
+
+## Age
+
+```{r age_covariate, include=TRUE}
+age_check <- d[, .N ,by=.(group, age)]
+age_check <- age_check[order(group, age)]
+age_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(age)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(age)) ~ group)]
+```
+```{r age_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=age, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of age across groups', 
+      x = 'Age group'
+  ) 
+```
+We observe that subjects are all above 30 years old. Subjects in the negative treatment group are younger than subjects in the positive treatment group. We also ran a wilcox.test to compare age distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, age distribution is the same.
+
+## Income
+
+```{r income_covariate, include=TRUE}
+income_check <- d[, .N ,by=.(group, income)]
+income_check <- income_check[order(group, income)]
+income_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(income)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(income)) ~ group)]
+```
+```{r income_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=income, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of income across groups', 
+      x = 'Income group'
+  ) 
+```
+
+The majority of subjects for all groups live in a household with income above $150k dollars. Note: ideally we want to order the chart to show income in ascending order.
+We also ran a wilcox.test to compare income distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, income distribution is the same.
+
+## Relative/Friend who died from cancer
+
+```{r deceased_covariate, include=TRUE}
+deceased_check <- d[, .N ,by=.(group, deceased_cancer)]
+deceased_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(deceased_cancer)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(deceased_cancer)) ~ group)]
+```
+
+```{r deceased_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=deceased_cancer, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of relative/friend who died from cancer across groups', 
+      x = 'Relative/friend who died from cancer'
+  ) 
+```
+We observe balance across groups in the number of relatives or friends who died from cancer. 
+We also ran a wilcox.test to compare relatives who died from cancer distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, relatives who died from cancer distribution is the same.
+
+## Previous donation
+
+```{r prev_donation_covariate, include=TRUE}
+prev_donation_check <- d[, .N ,by=.(group, previous_donation)]
+prev_donation_check <- prev_donation_check[order(group)]
+prev_donation_check
+
+d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(previous_donation)) ~ group)]
+
+d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(previous_donation)) ~ group)]
+```
+
+```{r prev_donation_covariate, include=TRUE}
+d %>%
+  ggplot() +
+  aes(x=previous_donation, fill = group) +
+  geom_bar(position='dodge') +
+  labs(
+      title = 'Distribution of previous donations across groups', 
+      x = 'Previous donations to charitable organizations'
+  ) 
+```
+In the control and positive treatment groups all subjects have donated before. 
+We also ran a wilcox.test on previous donation among each test group and control group. First test give high p-value that suggests we cannot reject the null hypothesis that among test and control group, previous donation distribution is the same. For the second test, everyone donated for the pilot data. So, the test was not meaningful.
+
+```{r overall_covariate_balance_check, include=TRUE}
+null_mod <- d[ , lm (as.numeric(as.factor(group)) ~ 1)]
+full_mod <- d[ , lm (as.numeric(as.factor(group)) ~ 1 + gender + age + income + deceased_cancer + previous_donation)]
+anova_mod <- anova(full_mod, null_mod, test = 'F')
+anova_mod
+
+```
+
+Since we ran multiple comparison tests for each covariate separately, we might run into a false positive as a result of possible fishing expedition here (i.e. green jelly beans problem covered in the class). More robust way of understanding whether we have covariance balance check is understanding if covariates explain the treatment assignmentswith an F-test. Since our F-test output is  giving us a very high p-value, we cannot reject the null hypothesis that all these covariates are not explaining the treatment assingment. So, randomization seems not showing an issue here.
+
+# Other variables
+
+During the survey other interesting variables are captured, such as the time it took for the participants to answer the survey and if the survey was finished or not. 
+
+## Survey duration
+
+```{r survey_duration, include=TRUE}
+d[, .(mean_survey_duration = mean(duration), 
+      min_survey_duration = min(duration), 
+      max_survey_duration = max(duration)
+      ) ,by=.(group)]
+```
+
+Since the control group does not have to read the treatment message, the time participants spend filling the survey is less. However, there is a difference in time between positive and negative messages. The minimum time the subjects spend in the survey is too short in the treatment groups to read the messages (receive treatment). We tested the survey ourselves to sanity check these durations. Control group took us about 40 seconds and test groups took us about 70 seconds. We worry that this finding might be suggesting that some subjects may not be actually getting the treatment when they were given the treatment (i.e. non-compliance). Therefore, we decided to implement timer in the production survey.
+
+
+## Finished survey
+
+```{r finished_survey, include=TRUE}
+d[, .(fraction_finished = mean(Finished)),by=.(group)]
+```
+ All subjects finished the survey.
+ 
+# Power Analysis
+
+In this section we conduct a power analysis to check how many participants we need in the experiment to have enough power to detect an effect.
+
+```{r power_analysis, include=TRUE} 
+number_of_subjects <- seq(10, 500, by=10) 
+
+# create a function to repeat to process to calculate power
+power_function <- function(sample_size=10, treatment_group="TREAT_NEG"){
+  
+  p_values <- rep(NA, 1000) 
+
+  for(i in 1:1000) {
+    experiment <- d[ (group == "CONTROL" | group== treatment_group) & !is.na(outcome) , 
+                     .SD[sample(.N, sample_size/2 , replace=TRUE)], by=group ] 
+    t_test <- t.test(experiment[group==treatment_group, outcome], experiment[group=="CONTROL",outcome]) 
+    p_values[i] <- t_test$p.value
+  }
+  
+  exp_power = mean(p_values < 0.05)
+  
+  return(exp_power)
+}
+
+```
+
+```{r power_analysis, include=TRUE}
+# power analysis for positive treatment
+
+power_with_size_pos_treatment <- NA 
+
+for(i in 1:length(number_of_subjects)) { 
+  power_with_size_pos_treatment[i] <- power_function(sample_size = number_of_subjects[i], treatment_group="TREAT_POS" )
+}
+
+plot(x = number_of_subjects, y = power_with_size_pos_treatment, type = 'l', 
+     main='Power Analysis for Positive Treatment', xlab='Number of Subjects', ylab='Power')
+
+```
+
+
+```{r power_analysis, include=TRUE}
+
+# power analysis for negative treatment
+
+power_with_size_neg_treatment <- NA 
+
+for(i in 1:length(number_of_subjects)) { 
+  power_with_size_neg_treatment[i] <- power_function(sample_size = number_of_subjects[i], treatment_group="TREAT_NEG" )
+}
+
+plot(x = number_of_subjects, y = power_with_size_neg_treatment, type = 'l', 
+     main='Power Analysis for Negative Treatment', xlab='Number of Subjects', ylab='Power')
+```
+
+In the positive vs. control experiment we observe that with 150 subjects we obtain a power higher than 80%. In the negative vs. control experiment, the analysis shows that we need less than 100 subjects to achieve a power higher than 80%. These results are encouraging, but we need to be careful because we did this analysis using data from a small sample. To be safe, we may decide to go with a sample size that includes 100+ subjects in each group (positive treatment, negative treatment and control).
+ 
+ 
