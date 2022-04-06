@@ -1,7 +1,7 @@
 ---
-title: "Analysis of Pilot Data"
+title: "Analysis of Experiment Data"
 author: "Jonathan, Aysun, Isabel"
-date: '2022-03-12'
+date: '2022-04-06'
 output: pdf_document
 ---
 
@@ -50,7 +50,7 @@ summary(d)
 summary(d$outcome)
 ```
 
-We observe that we have 2 null values in the outcome variable `outcome`.
+No null values in the outcome variable `outcome` (the issue observed in the pilot study is solved)
 
 ## Number of surveys
 
@@ -59,7 +59,7 @@ total_surveys <- d[ , .N]
 total_surveys
 ```
 
-We collected `r total_surveys` `r total_surveys` data points during pilot. There are an equal number of surveys in each group.
+We collected `r total_surveys` `r total_surveys` data points during pilot. Subjects are well distributed across groups.
 
 ```{r EDA, include = TRUE}
 d[ , .N, by=group]
@@ -72,7 +72,7 @@ Let's calculate the value of the outcome variable in each group.
 pilot_group_mean <- d[ , .(mean_donate = mean(outcome, na.rm = T)), by=group]
 pilot_group_mean
 ```
-The average willingness to donate in the control group is lower than in the treatment groups. The charts below show the distribution of the outcome variable (i.e. willingness to donate which take values 0-10) which is skewed to the left. We also plot the distribution of the outcome variable by treatment and control groups, which show that the control group's willingness to donate is lower. This result is consistent with the averages we calculated above.
+The average willingness to donate in the control group is lower than in the treatment groups. The charts below show the distribution of the outcome variable (i.e. willingness to donate which take values 0-10). We also plot the distribution of the outcome variable by treatment and control groups.
 
 ```{r}
 hist(
@@ -122,7 +122,7 @@ stargazer(basic_mod, full_mod, type = "text", se = list(se.basic_mod, se.full_mo
 
 ```
 
-For the pilot data, we also ran regression to understand ATEs and whether they're statistically significant. Not to out surprise, they are not. We also added covariates in the full model to reduce the standar errors, but treatments are still not statistically significant.
+We also ran regression to understand ATEs and whether they're statistically significant. Not to out surprise, they are not. We also added covariates in the full model to reduce the standard errors, but treatments are still not statistically significant.
 
 # Covariate analysis
 
@@ -155,7 +155,7 @@ d %>%
   ) 
 ```
 
-The gender seems to be balanced across groups, with the more extreme case observed in the control group. We also ran a wilcox.test to compare gender distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, gender distribution is the same.
+The gender seems to be balanced across groups. We also ran a wilcox.test to compare gender distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, gender distribution is the same.
 
 ## Age
 
@@ -178,7 +178,7 @@ d %>%
       x = 'Age group'
   ) 
 ```
-We observe that subjects are all above 30 years old. Subjects in the negative treatment group are younger than subjects in the positive treatment group. We also ran a wilcox.test to compare age distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, age distribution is the same.
+The distribution plot does not show any big difference in age distribution between groups. We also ran a wilcox.test to compare age distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, age distribution is the same.
 
 ## Income
 
@@ -202,8 +202,7 @@ d %>%
   ) 
 ```
 
-The majority of subjects for all groups live in a household with income above $150k dollars. Note: ideally we want to order the chart to show income in ascending order.
-We also ran a wilcox.test to compare income distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, income distribution is the same.
+The distribution plot shows that age groups are similar across treatment and control groups. We also ran a wilcox.test to compare income distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, income distribution is the same.
 
 ## Relative/Friend who died from cancer
 
@@ -215,7 +214,6 @@ d[group %in% c('CONTROL','TREAT_NEG')  , wilcox.test(as.numeric(as.factor(deceas
 
 d[group %in% c('CONTROL','TREAT_POS')  , wilcox.test(as.numeric(as.factor(deceased_cancer)) ~ group)]
 ```
-
 ```{r deceased_covariate, include=TRUE}
 d %>%
   ggplot() +
@@ -226,8 +224,7 @@ d %>%
       x = 'Relative/friend who died from cancer'
   ) 
 ```
-We observe balance across groups in the number of relatives or friends who died from cancer. 
-We also ran a wilcox.test to compare relatives who died from cancer distribution for among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, relatives who died from cancer distribution is the same.
+In general, we observe balance across groups in the number of relatives or friends who died from cancer. We also ran the wilcox.test to compare relatives who died from cancer distribution for among each test group and control group. The test shows a significant difference between the negative treatment and the control group. However, this could be just by chance.
 
 ## Previous donation
 
@@ -251,8 +248,7 @@ d %>%
       x = 'Previous donations to charitable organizations'
   ) 
 ```
-In the control and positive treatment groups all subjects have donated before. 
-We also ran a wilcox.test on previous donation among each test group and control group. First test give high p-value that suggests we cannot reject the null hypothesis that among test and control group, previous donation distribution is the same. For the second test, everyone donated for the pilot data. So, the test was not meaningful.
+The distribution plot shows about the same distribution in the previous donation variable across groups. We also ran a wilcox.test on previous donation among each test group and control group. Both tests give high p-values that suggest we cannot reject the null hypothesis that among test and control groups, previous donation distribution is the same.
 
 ```{r overall_covariate_balance_check, include=TRUE}
 null_mod <- d[ , lm (as.numeric(as.factor(group)) ~ 1)]
@@ -261,8 +257,7 @@ anova_mod <- anova(full_mod, null_mod, test = 'F')
 anova_mod
 
 ```
-
-Since we ran multiple comparison tests for each covariate separately, we might run into a false positive as a result of possible fishing expedition here (i.e. green jelly beans problem covered in the class). More robust way of understanding whether we have covariance balance check is understanding if covariates explain the treatment assignmentswith an F-test. Since our F-test output is  giving us a very high p-value, we cannot reject the null hypothesis that all these covariates are not explaining the treatment assingment. So, randomization seems not showing an issue here.
+Since we ran multiple comparison tests for each covariate separately, we might run into a false positive as a result of possible fishing expedition here (i.e. green jelly beans problem covered in the class). A more robust way of understanding whether we have covariance balance check is understanding if covariates explain the treatment assignments with an F-test. Since our F-test output is  giving us a very high p-value, we cannot reject the null hypothesis that all these covariates are not explaining the treatment assignment. So, randomization seems not showing an issue here.
 
 # Other variables
 
@@ -277,8 +272,7 @@ d[, .(mean_survey_duration = mean(duration),
       ) ,by=.(group)]
 ```
 
-Since the control group does not have to read the treatment message, the time participants spend filling the survey is less. However, there is a difference in time between positive and negative messages. The minimum time the subjects spend in the survey is too short in the treatment groups to read the messages (receive treatment). We tested the survey ourselves to sanity check these durations. Control group took us about 40 seconds and test groups took us about 70 seconds. We worry that this finding might be suggesting that some subjects may not be actually getting the treatment when they were given the treatment (i.e. non-compliance). Therefore, we decided to implement timer in the production survey.
-
+Since the control group does not have to read the treatment message, the average time participants spend filling the survey is less. Positive treatment and negative treatment groups spend about the same time completing the survey. The timer implemented as a result of the pilot study results seems to be working. 
 
 ## Finished survey
 
@@ -292,7 +286,7 @@ d[, .(fraction_finished = mean(Finished)),by=.(group)]
 In this section we conduct a power analysis to check how many participants we need in the experiment to have enough power to detect an effect.
 
 ```{r power_analysis, include=TRUE} 
-number_of_subjects <- seq(10, 500, by=10) 
+number_of_subjects <- seq(10, 2000, by=50) 
 
 # create a function to repeat to process to calculate power
 power_function <- function(sample_size=10, treatment_group="TREAT_NEG"){
@@ -342,6 +336,6 @@ plot(x = number_of_subjects, y = power_with_size_neg_treatment, type = 'l',
      main='Power Analysis for Negative Treatment', xlab='Number of Subjects', ylab='Power')
 ```
 
-In the positive vs. control experiment we observe that with 150 subjects we obtain a power higher than 80%. In the negative vs. control experiment, the analysis shows that we need less than 100 subjects to achieve a power higher than 80%. These results are encouraging, but we need to be careful because we did this analysis using data from a small sample. To be safe, we may decide to go with a sample size that includes 100+ subjects in each group (positive treatment, negative treatment and control).
+The treatment effect in the main experiment is between 1/3 and 1/4 of the treatment effect we observed during the pilot data. As a consequence, even though we were very conservative and included a lot more subjects in the experiment than the power analysis of the pilot data suggested, we do not have enough power to detect an effect. 
  
  
