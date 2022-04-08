@@ -72,7 +72,7 @@ Let's calculate the value of the outcome variable in each group.
 pilot_group_mean <- d[ , .(mean_donate = mean(outcome, na.rm = T)), by=group]
 pilot_group_mean
 ```
-The average willingness to donate in the control group is lower than in the treatment groups. The charts below show the distribution of the outcome variable (i.e. willingness to donate which take values 0-10). We also plot the distribution of the outcome variable by treatment and control groups.
+The average willingness to donate in the control group is lower than in the treatment groups. The charts below show the distribution of the outcome variable (i.e. willingness to donate which take values 0-10). We also plot the distribution of the outcome variable by treatment and control groups as well as box plots that show and compare the distribution of the outcomes for different treatment groups. Overall, we have seensome increase in outcome for treatment groups but the distirbution is much more dispersed than the control group.
 
 ```{r}
 hist(
@@ -93,6 +93,16 @@ d %>%
     title = 'Distribution of Outcome Variable for each group', 
     x = 'Willingness to Donate (0-10)'
   ) 
+
+d %>%
+  ggplot() +
+  aes(x=outcome, y=group) + 
+  geom_boxplot() + 
+  labs (
+    title = 'Distribution of Outcome Variable of Each Group',
+    x = 'Willingness to Donate (0-10)',
+    y = 'Groups'
+  )
 ```
 
 But, how big is the effect size?
@@ -115,14 +125,21 @@ The average treatment effect for the positive message is `ate_positive` `r ate_p
 ```{r ate_regression, include = TRUE }
 basic_mod <- d[ , lm(outcome ~ group)]
 se.basic_mod <- coeftest(basic_mod, vcov = vcovHC)[ , "Std. Error"]
-full_mod <- d[ , lm(outcome ~ group + gender + age + income + deceased_cancer + previous_donation)]
-se.full_mod <- coeftest(full_mod, vcov = vcovHC)[ , "Std. Error"]
+full_mod_nohte <- d[ , lm(outcome ~ group + deceased_cancer + previous_donation)] ## other covariates: "gender", "age", "income"
+se.full_mod_nohte <- coeftest(full_mod_nohte, vcov = vcovHC)[ , "Std. Error"]
 
-stargazer(basic_mod, full_mod, type = "text", se = list(se.basic_mod, se.full_mod), star.cutoffs = c(0.05, 0.01, 0.001), title = "Table 1: The effect of Framing on Intent to Donate")
+d[ , high_income := ifelse(income =="Above $150,000","Yes","No")]
+
+full_mod_hte <- d[ , lm(outcome ~ group + high_income + group * high_income + deceased_cancer + previous_donation)] 
+se.full_mod_hte <- coeftest(full_mod_hte, vcov = vcovHC)[ , "Std. Error"]
+
+stargazer(basic_mod, full_mod_nohte, full_mod_hte, type = "text", se = list(se.basic_mod, se.full_mod_nohte, se.full_mod_hte), star.cutoffs = c(0.05, 0.01, 0.001), title = "Table 1: The Effect of Framing on Intent to Donate")
 
 ```
 
-We also ran regression to understand ATEs and whether they're statistically significant. Not to out surprise, they are not. We also added covariates in the full model to reduce the standard errors, but treatments are still not statistically significant.
+We also ran regression to understand ATEs and whether they're statistically significant. Not to our surprise, they are not. We also added two covariates (previous donation and people who lost family member or close friend to cancer) in the full model that we think would explain the outcome variable to reduce the standard errors, but treatments are still not statistically significant. Though, it's important to note that previous donation explains the outcome variable in a statistically significant way. 
+
+We also had a hypothesis that people with high income (we defined that as people with $150K+ household income) might have different treatment effects compared to others. We didn't see that's the case as a result of the regression analysis above (column 3).
 
 # Covariate analysis
 
