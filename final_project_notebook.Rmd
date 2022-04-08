@@ -133,7 +133,9 @@ d[ , high_income := ifelse(income =="Above $150,000","Yes","No")]
 full_mod_hte <- d[ , lm(outcome ~ group + high_income + group * high_income + deceased_cancer + previous_donation)] 
 se.full_mod_hte <- coeftest(full_mod_hte, vcov = vcovHC)[ , "Std. Error"]
 
-stargazer(basic_mod, full_mod_nohte, full_mod_hte, type = "text", se = list(se.basic_mod, se.full_mod_nohte, se.full_mod_hte), star.cutoffs = c(0.05, 0.01, 0.001), title = "Table 1: The Effect of Framing on Intent to Donate")
+stargazer(basic_mod, full_mod_nohte, full_mod_hte, type = "text", se = list(se.basic_mod, se.full_mod_nohte, se.full_mod_hte), star.cutoffs = c(0.05, 0.01, 0.001), title = "Table 1: The Effect of Framing on Intent to Donate") #for report
+
+stargazer(basic_mod, full_mod_nohte, type = "text", se = list(se.basic_mod, se.full_mod_nohte), star.cutoffs = c(0.05, 0.01, 0.001), title = "Table 1: The Effect of Framing on Intent to Donate") #for presentation
 
 ```
 
