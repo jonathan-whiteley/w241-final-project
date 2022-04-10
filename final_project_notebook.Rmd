@@ -105,6 +105,32 @@ d %>%
   )
 ```
 
+```{r boxplot + stripchart}
+#install.packages("beeswarm")
+#library(beeswarm)
+
+# d[ , beeswarm(outcome ~ group,
+#          pch = 19, 
+#          col = c("#FFE099" , "#F76D5E", "#3FA0FF" ))]
+
+# Boxplot first, labels go here
+d[ , boxplot(outcome ~ group, col = "white",
+             names = c("Control", "Negative Treatment", "Positive Treatment"),
+             ylab = "Willingness to Donate",
+             xlab = "Group")]
+
+# Points
+d[ , stripchart(outcome ~ group,
+           method = "jitter",
+           pch = 19,
+           col = c("#66c2a5" , "#fc8d62", "#8da0cb" ),     #color-blind safe colors
+           vertical = TRUE,
+           add = TRUE)]
+
+
+
+```
+
 But, how big is the effect size?
 
 ```{r ate, include = TRUE }
